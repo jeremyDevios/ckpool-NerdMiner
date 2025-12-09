@@ -231,10 +231,10 @@ struct ckpool_instance {
 	int nonce2length; // Extranonce2 length
 
 	/* Difficulty settings */
-	int64_t mindiff; // Default 1
-	int64_t startdiff; // Default 42
-	int64_t highdiff; // Default 1000000
-	int64_t maxdiff; // No default
+	double mindiff; // Default 1
+	double startdiff; // Default 42
+	double highdiff; // Default 1000000
+	double maxdiff; // No default
 
 	/* Coinbase data */
 	char *btcaddress; // Address to mine to

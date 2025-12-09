@@ -202,7 +202,7 @@ struct worker_instance {
 
 	double best_diff; /* Best share found by this worker */
 	int64_t best_ever; /* Best share ever found by this worker */
-	int mindiff; /* User chosen mindiff */
+	double mindiff; /* User chosen mindiff */
 
 	bool idle;
 	bool notified_idle;
@@ -245,8 +245,8 @@ struct stratum_instance {
 	uint64_t enonce1_64;
 	int session_id;
 
-	int64_t diff; /* Current diff */
-	int64_t old_diff; /* Previous diff */
+	double diff; /* Current diff */
+	double old_diff; /* Previous diff */
 	int64_t diff_change_job_id; /* Last job_id we changed diff */
 
 	int64_t uadiff; /* Shares not yet accounted for in hashmeter */
@@ -296,7 +296,7 @@ struct stratum_instance {
 	time_t last_txns; /* Last time this worker requested txn hashes */
 	time_t disconnected_time; /* Time this instance disconnected */
 
-	int64_t suggest_diff; /* Stratum client suggested diff */
+	double suggest_diff; /* Stratum client suggested diff */
 	double best_diff; /* Best share found by this instance */
 
 	sdata_t *sdata; /* Which sdata this client is bound to */
@@ -1050,7 +1050,7 @@ static void add_base(ckpool_t *ckp, sdata_t *sdata, workbase_t *wb, bool *new_bl
 	/* Stats network_diff is not protected by lock but is not a critical
 	 * value */
 	wb->network_diff = diff_from_nbits(wb->headerbin + 72);
-	if (wb->network_diff < 1)
+	if (wb->network_diff <= 0)
 		wb->network_diff = 1;
 	stats->network_diff = wb->network_diff;
 	if (stats->network_diff != old_diff)
@@ -3132,7 +3132,7 @@ static void update_diff(ckpool_t *ckp, const char *cmd)
 
 	/* We only really care about integer diffs so clamp the lower limit to
 	 * 1 or it will round down to zero. */
-	if (unlikely(diff < 1))
+	if (unlikely(diff <= 0))
 		diff = 1;
 
 	dsdata = proxy->sdata;
@@ -5574,7 +5574,7 @@ static void stratum_send_diff(sdata_t *sdata, const stratum_instance_t *client)
 {
 	json_t *json_msg;
 
-	JSON_CPACK(json_msg, "{s[I]soss}", "params", client->diff, "id", json_null(),
+	JSON_CPACK(json_msg, "{s[f]soss}", "params", client->diff, "id", json_null(),
 			     "method", "mining.set_difficulty");
 	stratum_add_send(sdata, json_msg, client->id, SM_DIFF);
 }
@@ -5610,7 +5610,8 @@ static void add_submit(ckpool_t *ckp, stratum_instance_t *client, const double d
 	worker_instance_t *worker = client->worker_instance;
 	double tdiff, bdiff, dsps, drr, network_diff, bias;
 	user_instance_t *user = client->user_instance;
-	int64_t next_blockid, optimal, mindiff;
+	int64_t next_blockid;
+	double optimal, mindiff;
 	tv_t now_t;
 
 	mutex_lock(&ckp_sdata->uastats_lock);
@@ -5691,9 +5692,9 @@ static void add_submit(ckpool_t *ckp, stratum_instance_t *client, const double d
 	if (mindiff) {
 		if (drr < 0.5)
 			return;
-		optimal = lround(dsps * 2.4);
+		optimal = dsps * 2.4;
 	} else
-		optimal = lround(dsps * 3.33);
+		optimal = dsps * 3.33;
 
 	/* Clamp to mindiff ~ network_diff */
 
@@ -6473,15 +6474,15 @@ static void suggest_diff(ckpool_t *ckp, stratum_instance_t *client, const char *
 			 const json_t *params_val)
 {
 	json_t *arr_val = json_array_get(params_val, 0);
-	int64_t sdiff;
+	double sdiff;
 
 	if (unlikely(!client_active(client))) {
 		LOGNOTICE("Attempted to suggest diff on unauthorised client %s", client->identity);
 		return;
 	}
-	if (arr_val && json_is_integer(arr_val))
-		sdiff = json_integer_value(arr_val);
-	else if (sscanf(method, "mining.suggest_difficulty(%"PRId64, &sdiff) != 1) {
+	if (arr_val && json_is_number(arr_val))
+		sdiff = json_number_value(arr_val);
+	else if (sscanf(method, "mining.suggest_difficulty(%lf", &sdiff) != 1) {
 		LOGINFO("Failed to parse suggest_difficulty for client %s", client->identity);
 		return;
 	}
@@ -6902,7 +6903,7 @@ static void parse_remote_share(ckpool_t *ckp, sdata_t *sdata, json_t *val, const
 		LOGWARNING("Failed to get workername from remote message %s", buf);
 		return;
 	}
-	if (unlikely(!json_get_double(&diff, val, "diff") || diff < 1)) {
+	if (unlikely(!json_get_double(&diff, val, "diff") || diff <= 0)) {
 		LOGWARNING("Unable to parse valid diff from remote message %s", buf);
 		return;
 	}
