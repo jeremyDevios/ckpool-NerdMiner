@@ -41,6 +41,7 @@ static const char *scriptsig_header = "01000000010000000000000000000000000000000
 static uchar scriptsig_header_bin[41];
 static const double nonces = 4294967296;
 
+#ifndef strdupa
 # define strdupa(s)                                                           \
     ({                                                                        \
       const char *__old = (s);                                                \
@@ -48,6 +49,7 @@ static const double nonces = 4294967296;
       char *__new = (char *) alloca(__len);                                   \
       (char *) memcpy(__new, __old, __len);                                   \
     })
+#endif
 
 
 /* Add unaccounted shares when they arrive, remove them with each update of

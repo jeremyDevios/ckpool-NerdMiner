@@ -25,7 +25,9 @@
 #include <fcntl.h>
 #include <netinet/in.h>
 #include <netinet/tcp.h>
+#ifndef __linux__
 #include <pthread_np.h>
+#endif
 #include <stdlib.h>
 #include <string.h>
 #include <sys/time.h>
@@ -38,10 +40,15 @@
 #include "sha2.h"
 #include "utlist.h"
 
+#ifdef __linux__
+#define pthread_set_name_np(thread, name) pthread_setname_np(thread, name)
+#endif
+
 #ifndef UNIX_PATH_MAX
 #define UNIX_PATH_MAX 108
 #endif
 
+#ifndef strdupa
 #define strdupa(s)                                                           \
     ({                                                                        \
       const char *__old = (s);                                                \
@@ -49,6 +56,7 @@
       char *__new = (char *) alloca(__len);                                   \
       (char *) memcpy(__new, __old, __len);                                   \
     })
+#endif
 
 
 /* We use a weak function as a simple printf within the library that can be
