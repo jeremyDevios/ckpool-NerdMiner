@@ -6185,6 +6185,7 @@ out_submit:
 		/* Make sure we always submit any possible block solve */
 		LOGWARNING("Submitting possible block solve share diff %lf !", sdiff);
 		submit = true;
+		stratum_send_message(sdata, client, "SOLVED BLOCK");
 	}
 out_put:
 	put_workbase(sdata, wb);
