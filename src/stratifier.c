@@ -6253,7 +6253,7 @@ out_nowb:
 	json_set_string(val, "workername", client->workername);
 	json_set_string(val, "username", user->username);
         json_set_string(val, "address", client->address);
-        json_set_string(val, "agent", client->useragent);
+        json_set_string(val, "agent", client->useragent ? client->useragent : "");
 
 	if (ckp->logshares) {
 		fp = fopen(fname, "ae");
